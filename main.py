@@ -10,7 +10,7 @@ def error(msg):
 VERSION = "0.0.0 beta"
 
 strictOverflowMode = False
-
+useBit32 = True
 # Visitor functions
 def createOverload(type: llvm.TypeKind, val):
     if not strictOverflowMode:
@@ -45,6 +45,7 @@ def createOverload(type: llvm.TypeKind, val):
 
 # Visitor
 class Instructions:
+    # Arithmetic
     def add(self, inst):
         line = ""
         for op in inst.operands:
@@ -60,16 +61,56 @@ class Instructions:
         for op in inst.operands:
             line += op.name + " * "
         return "local " + inst.name + " = "+createOverload(inst.type, line[:-3])
-    def sdiv(self, inst):
+    def div(self, inst):
         line = ""
         for op in inst.operands:
             line += op.name + " / "
         return "local " + inst.name + " = "+createOverload(inst.type, line[:-3])
-    def srem(self, inst):
+    def rem(self, inst):
         line = ""
         for op in inst.operands:
             line += op.name + " % "
         return "local " + inst.name + " = "+createOverload(inst.type, line[:-3])
+   
+    # Unary
+    def neg(self, inst):
+        return "local " + inst.name + " = -" + inst.operands[0].name
+    
+    # Bitwise Shifts
+    def shl(self, inst):
+        if not useBit32:
+            return "local " + inst.name + " = " + inst.operands[0].name + " << " + inst.operands[1].name
+        else:
+            return "local " + inst.name + " = bit32.lshift(" + inst.operands[0].name + ", " + inst.operands[1].name + ")"
+    def lshr(self, inst):
+        if not useBit32:
+            return "local " + inst.name + " = " + inst.operands[0].name + " >> " + inst.operands[1].name
+        else:
+            return "local " + inst.name + " = bit32.rshift(" + inst.operands[0].name + ", " + inst.operands[1].name + ")"
+    def ashr(self, inst):
+        if not useBit32:
+            return "local " + inst.name + " = " + inst.operands[0].name + " >> " + inst.operands[1].name
+        else:
+            return "local " + inst.name + " = bit32.arshift(" + inst.operands[0].name + ", " + inst.operands[1].name + ")"
+    
+    # Bitwise AND, OR, XOR
+    def and_(self, inst):
+        if not useBit32:
+            return "local " + inst.name + " = " + inst.operands[0].name + " & " + inst.operands[1].name
+        else:
+            return "local " + inst.name + " = bit32.band(" + inst.operands[0].name + ", " + inst.operands[1].name + ")"
+    def or_(self, inst):
+        if not useBit32:
+            return "local " + inst.name + " = " + inst.operands[0].name + " | " + inst.operands[1].name
+        else:
+            return "local " + inst.name + " = bit32.bor(" + inst.operands[0].name + ", " + inst.operands[1].name + ")"
+    def xor(self, inst):
+        if not useBit32:
+            return "local " + inst.name + " = " + inst.operands[0].name + " ^ " + inst.operands[1].name
+        else:
+            return "local " + inst.name + " = bit32.bxor(" + inst.operands[0].name + ", " + inst.operands[1].name + ")"
+    
+    # Control flow
     def ret(self, inst):
         line = "return "
         for op in inst.operands:
@@ -102,16 +143,16 @@ class Instructions:
         else:
             line = "local " + inst.name + " = " + fname + "(" + ", ".join(args) + ")"
         return line
-   
-    def getelementptr(self, inst):
-        line = "local " + inst.name + " = "
-        for op in inst.operands:
-            line += "[" + op.name + "]"
-        return line
-    def __getattr__(self, name):
-        if hasattr(self, name):
+
+    def __getattr__(self, name): 
+        if hasattr(self, name): # Instruction exists
             return getattr(self, name)
-        sys.stderr.write("Unknown instruction: '" + name + "'\n")
+        elif (name.startswith("f") or name.startswith("u") or name.startswith("s")) and hasattr(self, name[1:]): # Does the instruction exist, but optimized for a specific type?
+            return getattr(self, name[1:])
+        elif hasattr(self, name+"_"): # Instruction exists, but with an underscore (to avoid conflicts with Python keywords)
+            return getattr(self, name+"_")
+        
+        sys.stderr.write("\033[91;1merror:\033[0m unknown instruction: '" + name + "'\n")
         sys.exit(1)
 instructions = Instructions()
 
@@ -181,20 +222,20 @@ def main():
         sys.exit(1)
 
     # Flags
-    global strictOverflowMode
+    global strictOverflowMode, useBit32
     strictOverflowMode = "-s" in flags
+    useBit32 = "-nb" in flags
 
     # Generate
-    try:
-        llvm_ir_code = open(inputf, "r").read() #IR code
-    except:
-        print("Please provide a source file (in LLVM IR, not bitcode).")
-        sys.exit(1)
-
     llvm.initialize()
     llvm.initialize_native_target()
     llvm.initialize_native_asmprinter()
-    module = llvm.parse_assembly(llvm_ir_code)
+    try:
+        llvm_ir_code = open(inputf, "r").read() #IR code
+        module = llvm.parse_assembly(llvm_ir_code)
+    except:
+        llvm_bitcode = open(inputf, "rb").read() #Bitcode
+        module = llvm.parse_bitcode(llvm_bitcode)
 
     with open(outputf, "w") as f:
         f.write(generateSource(module))
