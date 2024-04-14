@@ -4,7 +4,7 @@ import sys
 import re
 
 # Parse
-strictOverflowMode = True
+strictOverflowMode = False
 try:
     llvm_ir_code = open(sys.argv[1], "r").read() #IR code
 except:
@@ -94,12 +94,18 @@ class Instructions:
             if op.value_kind == llvm.ValueKind.function:
                 fname = op.name
             else:
-                arg = str(op) # would be: "i32 %0", so remove the type
-                argType = arg.split(" ")[0]
-                arg = arg.split(" ")[1:]
+                if op.name != "":
+                    arg = op.name
+                    argType = op.type
+                else:
+                    arg = str(op) # would be: "i32 %0", so remove the type
+                    argType = arg.split(" ")[0]
+                    arg = arg.split(" ")[1:]
                 args.append(createOverload(argType, "".join(arg)))
-
-        line = "local " + inst.name + " = " + fname + "(" + ", ".join(args) + ")"
+        if inst.name == "":
+            line = fname + "(" + ", ".join(args) + ")"
+        else:
+            line = "local " + inst.name + " = " + fname + "(" + ", ".join(args) + ")"
         return line
    
     def getelementptr(self, inst):
@@ -132,12 +138,15 @@ function llvm_overload_clamp(target, range, decimal)
     return if x == range then -range else x
 end"""
 for func in module.functions:
-    if func.name == "main":
-        generatedCode += "\ndo -- main"
+    if func.is_declaration:
+        generatedCode += "\nif not " + func.name + " then " + func.name + " = _G.llvm_" + func.name + " or error(\"roblox-llvm | function '" + func.name + "' not found\") end"
     else:
-        generatedCode += "\nfunction " + func.name + "(" + ", ".join([arg.name for arg in func.arguments]) + ")"
-    for block in func.blocks:
-        for instruction in block.instructions:
-            generatedCode += "\n    " + instructions.__getattr__(instruction.opcode)(instruction)
-    generatedCode += "\nend"
+        if func.name == "main":
+            generatedCode += "\ndo -- main"
+        else:
+            generatedCode += "\nfunction " + func.name + "(" + ", ".join([arg.name for arg in func.arguments]) + ")"
+        for block in func.blocks:
+            for instruction in block.instructions:
+                generatedCode += "\n    " + instructions.__getattr__(instruction.opcode)(instruction)
+        generatedCode += "\nend"
 print(generatedCode)
