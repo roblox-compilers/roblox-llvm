@@ -1,8 +1,46 @@
 from llvmlite import ir
 from llvmlite import binding as llvm
 import sys
+import re
 
 # Visitor functions
+def tokenize(text):
+    # Regular expression pattern for a token
+    # This pattern matches sequences of non-whitespace characters and strings enclosed in double quotes
+    token_pattern = r'c"[^"]*"|\S+'
+
+    # Find all tokens in the text
+    tokens = re.findall(token_pattern, text)
+
+    # Remove the double quotes from strings
+    tokens = [token[1:-1] if token[0] == '"' else token for token in tokens]
+
+    return tokens
+def globalvar(op):
+    definition = str(op)
+    definition = "=".join(definition.split("=")[1:]) # Seperate by the =, then remove the stuff before the first equals sign
+
+    for defin in tokenize(definition):
+        try:
+            int(defin)
+            return (int(defin), op.type)
+        except:
+            pass
+    
+        if defin.startswith("c\"") and defin.endswith("\""):
+            return (defin[1:], op.type)
+        
+def valueResolver(op):
+    if op.value_kind == llvm.ValueKind.global_variable:
+        return globalvar(op)
+    if op.name != "":
+        arg = op.name.replace('.', '_')
+        argType = op.type
+    else:
+        arg = str(op) # would be: "i32 %0", so remove the type
+        argType = arg.split(" ")[0]
+        arg = " ".join(arg.split(" ")[1:])
+    return arg, argType
 def createOverload(type: llvm.TypeKind, val, config):
     if not config.strictOverflowMode:
         return val
@@ -40,78 +78,73 @@ class Instructions:
     def add(self, inst, config):
         line = ""
         for op in inst.operands:
-            line += op.name + " + "
-        return "local " + inst.name + " = "+createOverload(inst.type, line[:-3], config)
+            line += valueResolver(op)[0] + " + "
+        return "local " + valueResolver(inst)[0] + " = "+createOverload(inst.type, line[:-3], config)
     def sub(self, inst, config):
         line = ""
         for op in inst.operands:
-            line += op.name + " - "
-        return "local " + inst.name + " = "+createOverload(inst.type, line[:-3], config)
+            line += valueResolver(op)[0] + " - "
+        return "local " + valueResolver(inst)[0] + " = "+createOverload(inst.type, line[:-3], config)
     def mul(self, inst, config):
         line = ""
         for op in inst.operands:
-            line += op.name + " * "
-        return "local " + inst.name + " = "+createOverload(inst.type, line[:-3], config)
+            line += valueResolver(op)[0] + " * "
+        return "local " + valueResolver(inst)[0] + " = "+createOverload(inst.type, line[:-3], config)
     def div(self, inst, config):
         line = ""
         for op in inst.operands:
-            line += op.name + " / "
-        return "local " + inst.name + " = "+createOverload(inst.type, line[:-3], config)
+            line += valueResolver(op)[0] + " / "
+        return "local " + valueResolver(inst)[0] + " = "+createOverload(inst.type, line[:-3], config)
     def rem(self, inst, config):
         line = ""
         for op in inst.operands:
-            line += op.name + " % "
-        return "local " + inst.name + " = "+createOverload(inst.type, line[:-3], config)
+            line += valueResolver(op)[0] + " % "
+        return "local " + valueResolver(inst)[0] + " = "+createOverload(inst.type, line[:-3], config)
    
     # Unary
     def neg(self, inst, config):
-        return "local " + inst.name + " = -" + inst.operands[0].name
+        return "local " + valueResolver(inst)[0] + " = -" + valueResolver(inst.operands[0])[0]
     
     # Bitwise Shifts
     def shl(self, inst, config):
         if not config.useBit32:
-            return "local " + inst.name + " = " + inst.operands[0].name + " << " + inst.operands[1].name
+            return "local " + valueResolver(inst)[0] + " = " + valueResolver(inst.operands[0])[0] + " << " + valueResolver(inst.operands[1])[0]
         else:
-            return "local " + inst.name + " = lshift(" + inst.operands[0].name + ", " + inst.operands[1].name + ")"
+            return "local " + valueResolver(inst)[0] + " = lshift(" + valueResolver(inst.operands[0])[0] + ", " + valueResolver(inst.operands[1])[0] + ")"
     def lshr(self, inst, config):
         if not config.useBit32:
-            return "local " + inst.name + " = " + inst.operands[0].name + " >> " + inst.operands[1].name
+            return "local " + valueResolver(inst)[0] + " = " + valueResolver(inst.operands[0])[0] + " >> " + valueResolver(inst.operands[1])[0]
         else:
-            return "local " + inst.name + " = rshift(" + inst.operands[0].name + ", " + inst.operands[1].name + ")"
+            return "local " + valueResolver(inst)[0] + " = rshift(" + valueResolver(inst.operands[0])[0] + ", " + valueResolver(inst.operands[1])[0] + ")"
     def ashr(self, inst, config):
         if not config.useBit32:
-            return "local " + inst.name + " = " + inst.operands[0].name + " >> " + inst.operands[1].name
+            return "local " + valueResolver(inst)[0] + " = " + valueResolver(inst.operands[0])[0] + " >> " + valueResolver(inst.operands[1])[0]
         else:
-            return "local " + inst.name + " = arshift(" + inst.operands[0].name + ", " + inst.operands[1].name + ")"
+            return "local " + valueResolver(inst)[0] + " = arshift(" + valueResolver(inst.operands[0])[0] + ", " + valueResolver(inst.operands[1])[0] + ")"
     
     # Bitwise AND, OR, XOR
     def and_(self, inst, config):
         if not config.useBit32:
-            return "local " + inst.name + " = " + inst.operands[0].name + " & " + inst.operands[1].name
+            return "local " + valueResolver(inst)[0] + " = " + valueResolver(inst.operands[0])[0] + " & " + valueResolver(inst.operands[1])[0]
         else:
-            return "local " + inst.name + " = band(" + inst.operands[0].name + ", " + inst.operands[1].name + ")"
+            return "local " + valueResolver(inst)[0] + " = band(" + valueResolver(inst.operands[0])[0] + ", " + valueResolver(inst.operands[1])[0] + ")"
     def or_(self, inst, config):
         if not config.useBit32:
-            return "local " + inst.name + " = " + inst.operands[0].name + " | " + inst.operands[1].name
+            return "local " + valueResolver(inst)[0] + " = " + valueResolver(inst.operands[0])[0] + " | " + valueResolver(inst.operands[1])[0]
         else:
-            return "local " + inst.name + " = bor(" + inst.operands[0].name + ", " + inst.operands[1].name + ")"
+            return "local " + valueResolver(inst)[0] + " = bor(" + valueResolver(inst.operands[0])[0] + ", " + valueResolver(inst.operands[1])[0] + ")"
     def xor(self, inst, config):
         if not config.useBit32:
-            return "local " + inst.name + " = " + inst.operands[0].name + " ^ " + inst.operands[1].name
+            return "local " + valueResolver(inst)[0] + " = " + valueResolver(inst.operands[0])[0] + " ^ " + valueResolver(inst.operands[1])[0]
         else:
-            return "local " + inst.name + " = bxor(" + inst.operands[0].name + ", " + inst.operands[1].name + ")"
+            return "local " + valueResolver(inst)[0] + " = bxor(" + valueResolver(inst.operands[0])[0] + ", " + valueResolver(inst.operands[1])[0] + ")"
     
     # Control flow
     def ret(self, inst, config):
         line = "return "
         for op in inst.operands:
-            if op.name != "":
-                line += op.name
-            else:
-                arg = str(op)
-                argType = arg.split(" ")[0]
-                arg = arg.split(" ")[1:]
-                line += createOverload(argType, "".join(arg), config)
+            arg, argType = valueResolver(op)
+            line += createOverload(argType, "".join(arg), config)
             line += ", "
         return line[:-2]
     def call(self, inst, config):
@@ -119,20 +152,14 @@ class Instructions:
         args = []
         for ind, op in enumerate(inst.operands):
             if op.value_kind == llvm.ValueKind.function:
-                fname = op.name
+                fname = valueResolver(op)[0]
             else:
-                if op.name != "":
-                    arg = op.name
-                    argType = op.type
-                else:
-                    arg = str(op) # would be: "i32 %0", so remove the type
-                    argType = arg.split(" ")[0]
-                    arg = arg.split(" ")[1:]
+                arg, argType = valueResolver(op)
                 args.append(createOverload(argType, "".join(arg), config))
         if inst.name == "":
             line = fname + "(" + ", ".join(args) + ")"
         else:
-            line = "local " + inst.name + " = " + fname + "(" + ", ".join(args) + ")"
+            line = "local " + inst.name.replace('.', '_') + " = " + fname + "(" + ", ".join(args) + ")"
         return line
 
     def getinst(self, name): 

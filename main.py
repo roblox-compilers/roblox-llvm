@@ -8,7 +8,7 @@ import gen
 
 # Entry point
 def error(msg):
-    print("\033[91;1merror:\033[0m " + msg)
+    print("\033[91;1merror\033[0;30m LLVM roblox-llvm:\033[0m " + msg)
 
 def main():
     # CLI (extracted from qts)
@@ -56,10 +56,16 @@ def main():
     try:
         llvm_ir_code = open(inputf, "r").read() #IR code
         module = llvm.parse_assembly(llvm_ir_code)
-    except:
+    except UnicodeDecodeError:
         llvm_bitcode = open(inputf, "rb").read() #Bitcode
         module = llvm.parse_bitcode(llvm_bitcode)
+    except:
+        error("failed to read and parse file.")
+        sys.exit(1)
 
+    module.verify()
+    if llvm.ModulePassManager().run(module): # info that it has been optimized
+        print("\033[1;30mllvm-opt:\033[0m module has been optimized")
     with open(outputf, "w") as f:
         f.write(gen.generateSource(module, config))
         f.close()

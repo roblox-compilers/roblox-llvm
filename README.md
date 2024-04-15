@@ -19,3 +19,18 @@ $ rbxllc <input.ll> -o <output.lua>
 - `pip install llvmlite`
 - python3
 You can install prebuilt binaries from the releases page.
+
+# Using the example:
+1. Compile test.c to test.ll using clang:
+```bash
+$ clang -S -emit-llvm test/test.c -o test/test.ll
+```
+2. Compile test.ll to test.lua using rbxllc:
+```bash
+$ rbxllc test/test.ll -o test/test.lua
+```
+3. Run test.lua using luau:
+```bash
+$ luau test.lua
+Hello, World!
+```

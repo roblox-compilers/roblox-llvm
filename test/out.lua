@@ -13,6 +13,7 @@ local band = bit32.band
 local bor = bit32.bor
 local bxor = bit32.bxor
 
+local _hello = "Hello, World!\00"
 function add(a, b)
     local result = a + b
     return result
@@ -35,13 +36,8 @@ function mod(a, b)
 end
 if not print then print = _G.llvm_print or error("roblox-llvm | function 'print' not found") end
 function main()
-    local a = add(1, 2)
-    local b = sub(3, 4)
-    local c = mul(5, 6)
-    local d = div(7, 8)
-    local e = mod(9, 10)
-    print(a)
+    print()
     return 0
 end
 
-return {add, sub, mul, div, mod, main}
+return {add, sub, mul, div, mod, main, _hello}

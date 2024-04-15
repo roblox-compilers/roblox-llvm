@@ -38,12 +38,13 @@ local bxor = _G.llvm_bxor or error("roblox-llvm | function 'bxor' not found (dis
         generatedCode += """
 local buffer = _G.llvm_buffer or error("roblox-llvm | function 'buffer' not found (disable -cbit flag to use the default implementation)")
 """
-
+    for var in module.global_variables:
+        generatedCode += f"\nlocal {var.name.replace('.', '_')} = {valueResolver(var)[0]}"
     for func in module.functions:
         if func.is_declaration:
             generatedCode += "\nif not " + func.name + " then " + func.name + " = _G.llvm_" + func.name + " or error(\"roblox-llvm | function '" + func.name + "' not found\") end"
         else:
-            generatedCode += "\nfunction " + func.name + "(" + ", ".join([arg.name for arg in func.arguments]) + ")"
+            generatedCode += "\nfunction " + func.name + "(" + ", ".join([valueResolver(arg)[0] for arg in func.arguments]) + ")"
             for block in func.blocks:
                 for instruction in block.instructions:
                     generatedCode += "\n    " + instructions.getinst(instruction.opcode)(instruction, config)
@@ -51,5 +52,5 @@ local buffer = _G.llvm_buffer or error("roblox-llvm | function 'buffer' not foun
     
     generatedCode += """
 
-return {"""+", ".join([func.name for func in module.functions if not func.is_declaration])  +"}"
+return {"""+", ".join([func.name.replace('.','_') for func in module.functions if not func.is_declaration]) +", "+ ", ".join([var.name.replace('.','_') for var in module.global_variables if not var.is_declaration]) + "}\n"""
     return (generatedCode)
