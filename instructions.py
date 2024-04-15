@@ -5,14 +5,8 @@ import re
 
 # Visitor functions
 def tokenize(text):
-    # Regular expression pattern for a token
-    # This pattern matches sequences of non-whitespace characters and strings enclosed in double quotes
     token_pattern = r'c"[^"]*"|\S+'
-
-    # Find all tokens in the text
     tokens = re.findall(token_pattern, text)
-
-    # Remove the double quotes from strings
     tokens = [token[1:-1] if token[0] == '"' else token for token in tokens]
 
     return tokens
@@ -29,6 +23,9 @@ def globalvar(op):
     
         if defin.startswith("c\"") and defin.endswith("\""):
             return (defin[1:], op.type)
+        
+        if defin == "null":
+            return ("nil", op.type)
         
 def valueResolver(op):
     if op.value_kind == llvm.ValueKind.global_variable:
@@ -139,6 +136,9 @@ class Instructions:
         else:
             return "local " + valueResolver(inst)[0] + " = bxor(" + valueResolver(inst.operands[0])[0] + ", " + valueResolver(inst.operands[1])[0] + ")"
     
+    # Memory
+    def alloca(self, inst, config):
+        return "local " + valueResolver(inst)[0] + " = buffer.create(1)"
     # Control flow
     def ret(self, inst, config):
         line = "return "
