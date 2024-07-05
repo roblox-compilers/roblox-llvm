@@ -2,6 +2,7 @@ from llvmlite import ir
 from llvmlite import binding as llvm
 import sys
 import re
+from strings import *
 
 # Visitor functions
 def tokenize(text):
@@ -26,7 +27,8 @@ def globalvar(op):
         
         if defin == "null":
             return ("nil", op.type)
-        
+def cleanName(name):
+    return name.replace('.', '_')
 def valueResolver(op):
     if op.value_kind == llvm.ValueKind.global_variable:
         return globalvar(op)
@@ -65,7 +67,7 @@ def createOverload(type: llvm.TypeKind, val, config):
     #if style == 0:
     #    return val+" % "+str(range)
     #elif style == 1 or style == 2:
-    return "llvm_overload_clamp("+val+", "+str(range)+", "+str(decimal)+")"
+    return CLAMP.format(val, str(range), str(decimal))
     #elif style == 2:
     #    return "("+val+" + "+str(range)+") % 256"
 
@@ -76,69 +78,69 @@ class Instructions:
         line = ""
         for op in inst.operands:
             line += valueResolver(op)[0] + " + "
-        return "local " + valueResolver(inst)[0] + " = "+createOverload(inst.type, line[:-3], config)
+        return VARIABLE_DECL.format(valueResolver(inst)[0], createOverload(inst.type, line[:-3], config))
     def sub(self, inst, config):
         line = ""
         for op in inst.operands:
             line += valueResolver(op)[0] + " - "
-        return "local " + valueResolver(inst)[0] + " = "+createOverload(inst.type, line[:-3], config)
+        return VARIABLE_DECL.format(valueResolver(inst)[0], createOverload(inst.type, line[:-3], config))
     def mul(self, inst, config):
         line = ""
         for op in inst.operands:
             line += valueResolver(op)[0] + " * "
-        return "local " + valueResolver(inst)[0] + " = "+createOverload(inst.type, line[:-3], config)
+        return VARIABLE_DECL.format(valueResolver(inst)[0], createOverload(inst.type, line[:-3], config))
     def div(self, inst, config):
         line = ""
         for op in inst.operands:
             line += valueResolver(op)[0] + " / "
-        return "local " + valueResolver(inst)[0] + " = "+createOverload(inst.type, line[:-3], config)
+        return VARIABLE_DECL.format(valueResolver(inst)[0], createOverload(inst.type, line[:-3], config))
     def rem(self, inst, config):
         line = ""
         for op in inst.operands:
             line += valueResolver(op)[0] + " % "
-        return "local " + valueResolver(inst)[0] + " = "+createOverload(inst.type, line[:-3], config)
+        return VARIABLE_DECL.format(valueResolver(inst)[0], createOverload(inst.type, line[:-3], config))
    
     # Unary
     def neg(self, inst, config):
-        return "local " + valueResolver(inst)[0] + " = -" + valueResolver(inst.operands[0])[0]
+        return VARIABLE_DECL.format(valueResolver(inst)[0], "-" + valueResolver(inst.operands[0])[0])
     
     # Bitwise Shifts
     def shl(self, inst, config):
         if not config.useBit32:
-            return "local " + valueResolver(inst)[0] + " = " + valueResolver(inst.operands[0])[0] + " << " + valueResolver(inst.operands[1])[0]
+            return VARIABLE_DECL.format(valueResolver(inst)[0], valueResolver(inst.operands[0])[0] + " << " + valueResolver(inst.operands[1])[0])
         else:
-            return "local " + valueResolver(inst)[0] + " = lshift(" + valueResolver(inst.operands[0])[0] + ", " + valueResolver(inst.operands[1])[0] + ")"
+            return VARIABLE_DECL.format(valueResolver(inst)[0], "lshift(" + valueResolver(inst.operands[0])[0] + ", " + valueResolver(inst.operands[1])[0] + ")")
     def lshr(self, inst, config):
         if not config.useBit32:
-            return "local " + valueResolver(inst)[0] + " = " + valueResolver(inst.operands[0])[0] + " >> " + valueResolver(inst.operands[1])[0]
+            return VARIABLE_DECL.format(valueResolver(inst)[0], valueResolver(inst.operands[0])[0] + " >> " + valueResolver(inst.operands[1])[0])
         else:
-            return "local " + valueResolver(inst)[0] + " = rshift(" + valueResolver(inst.operands[0])[0] + ", " + valueResolver(inst.operands[1])[0] + ")"
+            return VARIABLE_DECL.format(valueResolver(inst)[0], "rshift(" + valueResolver(inst.operands[0])[0] + ", " + valueResolver(inst.operands[1])[0] + ")")
     def ashr(self, inst, config):
         if not config.useBit32:
-            return "local " + valueResolver(inst)[0] + " = " + valueResolver(inst.operands[0])[0] + " >> " + valueResolver(inst.operands[1])[0]
+            return VARIABLE_DECL.format(valueResolver(inst)[0], valueResolver(inst.operands[0])[0] + " >> " + valueResolver(inst.operands[1])[0])
         else:
-            return "local " + valueResolver(inst)[0] + " = arshift(" + valueResolver(inst.operands[0])[0] + ", " + valueResolver(inst.operands[1])[0] + ")"
+            return VARIABLE_DECL.format(valueResolver(inst)[0], "arshift(" + valueResolver(inst.operands[0])[0] + ", " + valueResolver(inst.operands[1])[0] + ")")
     
     # Bitwise AND, OR, XOR
     def and_(self, inst, config):
         if not config.useBit32:
-            return "local " + valueResolver(inst)[0] + " = " + valueResolver(inst.operands[0])[0] + " & " + valueResolver(inst.operands[1])[0]
+            return VARIABLE_DECL.format(valueResolver(inst)[0], valueResolver(inst.operands[0])[0] + " & " + valueResolver(inst.operands[1])[0])
         else:
-            return "local " + valueResolver(inst)[0] + " = band(" + valueResolver(inst.operands[0])[0] + ", " + valueResolver(inst.operands[1])[0] + ")"
+            return VARIABLE_DECL.format(valueResolver(inst)[0], "band(" + valueResolver(inst.operands[0])[0] + ", " + valueResolver(inst.operands[1])[0] + ")")
     def or_(self, inst, config):
         if not config.useBit32:
-            return "local " + valueResolver(inst)[0] + " = " + valueResolver(inst.operands[0])[0] + " | " + valueResolver(inst.operands[1])[0]
+            return VARIABLE_DECL.format(valueResolver(inst)[0], valueResolver(inst.operands[0])[0] + " | " + valueResolver(inst.operands[1])[0])
         else:
-            return "local " + valueResolver(inst)[0] + " = bor(" + valueResolver(inst.operands[0])[0] + ", " + valueResolver(inst.operands[1])[0] + ")"
+            return VARIABLE_DECL.format(valueResolver(inst)[0], "bor(" + valueResolver(inst.operands[0])[0] + ", " + valueResolver(inst.operands[1])[0] + ")")
     def xor(self, inst, config):
         if not config.useBit32:
-            return "local " + valueResolver(inst)[0] + " = " + valueResolver(inst.operands[0])[0] + " ^ " + valueResolver(inst.operands[1])[0]
+            return VARIABLE_DECL.format(valueResolver(inst)[0], valueResolver(inst.operands[0])[0] + " ^ " + valueResolver(inst.operands[1])[0])
         else:
-            return "local " + valueResolver(inst)[0] + " = bxor(" + valueResolver(inst.operands[0])[0] + ", " + valueResolver(inst.operands[1])[0] + ")"
+            return VARIABLE_DECL.format(valueResolver(inst)[0], "bxor(" + valueResolver(inst.operands[0])[0] + ", " + valueResolver(inst.operands[1])[0] + ")")
     
     # Memory
     def alloca(self, inst, config):
-        return "local " + valueResolver(inst)[0] + " = buffer.create(1)"
+        return VARIABLE_DECL.format(valueResolver(inst)[0], "buffer.create(1)")
     # Control flow
     def ret(self, inst, config):
         line = "return "
@@ -159,7 +161,7 @@ class Instructions:
         if inst.name == "":
             line = fname + "(" + ", ".join(args) + ")"
         else:
-            line = "local " + inst.name.replace('.', '_') + " = " + fname + "(" + ", ".join(args) + ")"
+            line = VARIABLE_DECL.format(inst.name.replace('.', '_'), fname + "(" + ", ".join(args) + ")")
         return line
 
     def getinst(self, name): 
