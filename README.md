@@ -15,7 +15,7 @@ $ rbxllc <input.ll> -o <output.lua>
 - `-cbit`: generated code will declare functions from the Luau `bit32` library to be resolved. <sub>Reccomended for non-luau ecosystems.</sub>
 # Installation:
 ## Requirements:
-- LLVM 14 (not 17!)
+- LLVM 14 (not higher)
 - `pip install llvmlite`
 - python3
 You can install prebuilt binaries from the releases page.
