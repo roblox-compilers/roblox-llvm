@@ -24,7 +24,33 @@ local arshift = _G.llvm_arshift or error("roblox-llvm | function 'arshift' not f
 local band = _G.llvm_band or error("roblox-llvm | function 'band' not found (disable -cbit flag to use the default implementation)")
 local bor = _G.llvm_bor or error("roblox-llvm | function 'bor' not found (disable -cbit flag to use the default implementation)")
 local bxor = _G.llvm_bxor or error("roblox-llvm | function 'bxor' not found (disable -cbit flag to use the default implementation)")"""
-CUSTOM_BUFFER = "local buffer = _G.llvm_buffer or error(\"roblox-llvm | function 'buffer' not found (disable -cbuff flag to use the default implementation)\")"
+CUSTOM_BUFFER = """
+local buffer = _G.llvm_buffer or error(\"roblox-llvm | function 'buffer' not found (disable -cbuff flag to use the default implementation)\")
+local alloc = _G.llvm_alloc or error(\"roblox-llvm | function 'alloc' not found (disable -cbuff flag to use the default implementation)\")
+local store = _G.llvm_store or error(\"roblox-llvm | function 'store' not found (disable -cbuff flag to use the default implementation)\")
+"""
+BUFFER = """
+local system_buffer = buffer.create(2048)
+local buffer_index = 0
+
+function newType(type)
+    if type:sub(1, 3) == "i32" then
+        return "i32"
+    end
+    error("roblox-llvm | Unknown type: "..type)
+end
+function store(using_index, type, value, alignment)
+    local using_type = newType(type)
+    buffer['write' .. using_type](system_buffer, using_index, value)
+end
+function alloc(type, size)
+    local using_index = buffer_index
+
+    buffer_index += size
+
+    return using_index
+end
+"""
 VARIABLE_DECL = "local {} = {}"
 FUNC_START = "function {}({})"
 FUNC_END = "end"

@@ -15,6 +15,8 @@ def generateSource(module, config):
 
     if config.customBuffer:
         generatedCode += CUSTOM_BUFFER + "\n\n"
+    else:
+        generatedCode += BUFFER + "\n\n"
     for var in module.global_variables:
         generatedCode += VARIABLE_DECL.format(clean(var.name), valueResolver(var)[0])
     for func in module.functions:
