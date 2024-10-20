@@ -7,9 +7,18 @@ from strings import *
 
 # Visitor functions
 def tokenize(text):
-    token_pattern = r'c"[^"]*"|\S+'
+    token_pattern = r'\[[^\]]*\]|"[^"]*"|\S+[*@]?\S*'
     tokens = re.findall(token_pattern, text)
-    tokens = [token[1:-1] if token[0] == '"' else token for token in tokens]
+
+    tokens = [
+        (
+            token[1:-1]
+            if (token.startswith('"') and token.endswith('"'))
+            or (token.startswith("[") and token.endswith("]"))
+            else token
+        )
+        for token in tokens
+    ]
 
     return tokens
 
@@ -55,9 +64,12 @@ def clean(val):
             .replace(" ", "")
             .replace("%", "pointer_")
             .replace("*", "_ptr")
+            .replace("(", "")
+            .replace(")", "")
+            .replace("@", "")
         )
     else:
-        return "--[[Advanced values are not supported yet]] nil"
+        return values.gethandler(val.split(" ")[0])(val)
 
 
 def cleanObjects(args):
@@ -323,4 +335,46 @@ class Instructions:
         sys.exit(1)
 
 
+class Values:
+    def getelementptr(self, val):
+        vals = tokenize(val)
+        if vals[1] != "inbounds":
+            sys.stderr.write(
+                "\033[91;1merror:\033[0m 'getelementptr' must be inbounds\n"
+            )
+            sys.exit(1)
+
+        ptr = ""
+        for i in range(2, len(vals)):
+            if vals[i].startswith("@"):
+                ptr += clean(vals[i])
+
+        if ptr == "":
+            sys.stderr.write(
+                "\033[91;1merror:\033[0m could not extract 'getelementptr' pointer\n"
+            )
+            sys.exit(1)
+
+        return ptr
+
+    def gethandler(self, name):
+        if hasattr(self, name):  # Instruction exists
+            return getattr(self, name)
+        elif (
+            name.startswith("f") or name.startswith("u") or name.startswith("s")
+        ) and hasattr(
+            self, name[1:]
+        ):  # Does the instruction exist, but optimized for a specific type?
+            return getattr(self, name[1:])
+        elif hasattr(
+            self, name + "_"
+        ):  # Instruction exists, but with an underscore (to avoid conflicts with Python keywords)
+            return getattr(self, name + "_")
+
+        sys.stderr.write("\033[91;1merror:\033[0m unknown value: '" + name + "'\n")
+        sys.exit(1)
+
+
 instructions = Instructions()
+
+values = Values()
