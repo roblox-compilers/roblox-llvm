@@ -1,6 +1,6 @@
 from llvmlite import ir
 from llvmlite import binding as llvm
-import sys
+import sys, traceback
 import re
 from strings import *
 
@@ -77,8 +77,8 @@ def valueResolver(op):
     return arg, argType
 
 
-def clean(val):
-    if len(val.split(" ")) <= 1:
+def clean(val, raw=False):
+    if len(val.split(" ")) <= 1 or raw:
         return (
             val.replace(".", "_")
             .replace(",", "")
@@ -94,7 +94,7 @@ def clean(val):
 
 
 def cleanObjects(args):
-    return [clean(arg) for arg in args]
+    return [clean(arg, raw=True) for arg in args]
 
 
 def createOverload(type: llvm.TypeKind, val, config):
@@ -290,22 +290,22 @@ class Instructions:
     # Memory
     def alloca(self, inst, config):
         vals = tokenize(valueResolver(inst)[0])
-        ptr = clean(vals[0])
-        type = clean(vals[3])
+        ptr = clean(vals[0], raw=True)
+        type = clean(vals[3], raw=True)
         alignment = "nil"
         if len(vals) > 4:
-            alignment = clean(vals[5])
+            alignment = clean(vals[5], raw=True)
 
         return ALLOC.format(ptr, type, alignment)
 
     def store(self, inst, config):
         vals = tokenize(valueResolver(inst)[0])
-        type = clean(vals[2])
-        value = clean(vals[3])
-        ptr = clean(vals[4])
+        type = clean(vals[2], raw=True)
+        value = clean(vals[3], raw=True)
+        ptr = clean(vals[4], raw=True)
         alignment = "nil"
         if len(vals) > 5:
-            alignment = clean(vals[6])
+            alignment = clean(vals[6], raw=True)
 
         return STORE.format(ptr, value, type, alignment)
 

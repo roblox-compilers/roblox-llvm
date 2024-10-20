@@ -1,6 +1,8 @@
-void print(char *str);
+void print(int a);
 int main()
 {
-    print("Hello, World!\n");
+    int a = 1;
+    a++;
+    print(a);
     return 0;
 }

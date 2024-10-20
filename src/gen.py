@@ -18,13 +18,15 @@ def generateSource(module, config):
     else:
         generatedCode += BUFFER + "\n\n"
     for var in module.global_variables:
-        generatedCode += VARIABLE_DECL.format(clean(var.name), valueResolver(var)[0])
+        generatedCode += VARIABLE_DECL.format(
+            clean(var.name, raw=True), valueResolver(var)[0]
+        )
     for func in module.functions:
         if func.is_declaration:
             generatedCode += DECLARATION.format(name=func.name)
         else:
             args = ", ".join([valueResolver(arg)[0] for arg in func.arguments])
-            generatedCode += "\n" + FUNC_START.format(clean(func.name), args)
+            generatedCode += "\n" + FUNC_START.format(clean(func.name, raw=True), args)
             for block in func.blocks:
                 for instruction in block.instructions:
                     generatedCode += "\n    " + instructions.getinst(
@@ -33,10 +35,14 @@ def generateSource(module, config):
             generatedCode += "\n" + FUNC_END
 
     functions = [
-        clean(func.name) for func in module.functions if not func.is_declaration
+        clean(func.name, raw=True)
+        for func in module.functions
+        if not func.is_declaration
     ]
     variables = [
-        clean(var.name) for var in module.global_variables if not var.is_declaration
+        clean(var.name, raw=True)
+        for var in module.global_variables
+        if not var.is_declaration
     ]
 
     exports = ", ".join([f'["{name}"] = {name}' for name in functions + variables])
