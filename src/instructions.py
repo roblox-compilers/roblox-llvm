@@ -7,7 +7,7 @@ from strings import *
 
 # Visitor functions
 def tokenize(text):
-    token_pattern = r'\[[^\]]*\]|"[^"]*"|\S+[*@]?\S*'
+    token_pattern = r'\[[^\]]*\]|c"[^"]*"|\S+[*@]?\S*'
     tokens = re.findall(token_pattern, text)
 
     tokens = [
@@ -21,6 +21,27 @@ def tokenize(text):
     ]
 
     return tokens
+
+
+def stringResolver(op):
+    # Remove the outer quotes
+    op = op[1:-1]
+
+    # Remove specific hex escape sequences
+    op = re.sub(r"\\[0-9A-Fa-f]{2}", "", op)  # Remove \xx
+    op = re.sub(r"\\u[0-9A-Fa-f]{4}", "", op)  # Remove \uxxxx
+    op = re.sub(r"\\U00[0-9A-Fa-f]{6}", "", op)  # Remove \U00xxxxxx
+
+    # Replace additional escape sequences
+    cleaned = (
+        op.replace("\\v", "")  # Vertical tab
+        .replace("\\r", "")  # Carriage return
+        .replace("\\f", "")  # Form feed
+        .replace("\\a", "<alert>")  # Alert
+        .replace("\\?", "?")  # Question mark
+    )
+
+    return '"' + cleaned + '"'
 
 
 def globalvar(op):
@@ -37,7 +58,7 @@ def globalvar(op):
             pass
 
         if defin.startswith('c"') and defin.endswith('"'):
-            return (defin[1:], op.type)
+            return (stringResolver(defin[1:]), op.type)
 
         if defin == "null":
             return ("nil", op.type)
@@ -57,7 +78,7 @@ def valueResolver(op):
 
 
 def clean(val):
-    if len(val.split(" ")) == 1:
+    if len(val.split(" ")) <= 1:
         return (
             val.replace(".", "_")
             .replace(",", "")
