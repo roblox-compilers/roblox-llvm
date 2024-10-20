@@ -24,7 +24,7 @@ local arshift = _G.llvm_arshift or error("roblox-llvm | function 'arshift' not f
 local band = _G.llvm_band or error("roblox-llvm | function 'band' not found (disable -cbit flag to use the default implementation)")
 local bor = _G.llvm_bor or error("roblox-llvm | function 'bor' not found (disable -cbit flag to use the default implementation)")
 local bxor = _G.llvm_bxor or error("roblox-llvm | function 'bxor' not found (disable -cbit flag to use the default implementation)")"""
-CUSTOM_BUFFER = 'local buffer = _G.llvm_buffer or error("roblox-llvm | function \'buffer\' not found (disable -cbuff flag to use the default implementation)")'
+CUSTOM_BUFFER = "local buffer = _G.llvm_buffer or error(\"roblox-llvm | function 'buffer' not found (disable -cbuff flag to use the default implementation)\")"
 VARIABLE_DECL = "local {} = {}"
 FUNC_START = "function {}({})"
 FUNC_END = "end"
