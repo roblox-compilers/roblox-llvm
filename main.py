@@ -25,7 +25,7 @@ def main():
             lookForOutput = True
         elif arg == "-v" or arg == "--version":
             print(
-                "\033[1;31mroblox-llvm:\033[0m "
+                "\033[1;32mroblox-llvm:\033[0m "
                 + VERSION
                 + " | \033[1;30mllvmlite:\033[0m "
                 + llvmlite.__version__
@@ -67,8 +67,8 @@ def main():
     except UnicodeDecodeError:
         llvm_bitcode = open(inputf, "rb").read()  # Bitcode
         module = llvm.parse_bitcode(llvm_bitcode)
-    except:
-        error("failed to read and parse file.")
+    except Exception as e:
+        error(f"{e}")
         sys.exit(1)
 
     module.verify()

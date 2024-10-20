@@ -36,3 +36,5 @@ end
 EXPORT = "return {{{}}}"
 CLAMP = "llvm_overload_clamp({}, {}, {})"
 DECLARATION = "\nif not {name} then {name} = _G.llvm_{name} or error(\"roblox-llvm | function '{name}' not found\") end"
+STORE = "store({}, '{}', {}, {})"
+ALLOC = "local {} = alloc('{}', {})"

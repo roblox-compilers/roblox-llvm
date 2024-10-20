@@ -34,10 +34,6 @@ def globalvar(op):
             return ("nil", op.type)
 
 
-def cleanName(name):
-    return name.replace(".", "_")
-
-
 def valueResolver(op):
     if op.value_kind == llvm.ValueKind.global_variable:
         return globalvar(op)
@@ -49,6 +45,23 @@ def valueResolver(op):
         argType = arg.split(" ")[0]
         arg = " ".join(arg.split(" ")[1:])
     return arg, argType
+
+
+def clean(val):
+    if len(val.split(" ")) == 1:
+        return (
+            val.replace(".", "_")
+            .replace(",", "")
+            .replace(" ", "")
+            .replace("%", "pointer_")
+            .replace("*", "_ptr")
+        )
+    else:
+        return "--[[Advanced values are not supported yet]] nil"
+
+
+def cleanObjects(args):
+    return [clean(arg) for arg in args]
 
 
 def createOverload(type: llvm.TypeKind, val, config):
@@ -243,7 +256,25 @@ class Instructions:
 
     # Memory
     def alloca(self, inst, config):
-        return VARIABLE_DECL.format(valueResolver(inst)[0], "buffer.create(1)")
+        vals = tokenize(valueResolver(inst)[0])
+        ptr = clean(vals[0])
+        type = clean(vals[3])
+        alignment = "nil"
+        if len(vals) > 4:
+            alignment = clean(vals[5])
+
+        return ALLOC.format(ptr, type, alignment)
+
+    def store(self, inst, config):
+        vals = tokenize(valueResolver(inst)[0])
+        type = clean(vals[2])
+        value = clean(vals[3])
+        ptr = clean(vals[4])
+        alignment = "nil"
+        if len(vals) > 5:
+            alignment = clean(vals[6])
+
+        return STORE.format(ptr, value, type, alignment)
 
     # Control flow
     def ret(self, inst, config):
@@ -264,10 +295,11 @@ class Instructions:
                 arg, argType = valueResolver(op)
                 args.append(createOverload(argType, "".join(arg), config))
         if inst.name == "":
-            line = fname + "(" + ", ".join(args) + ")"
+            line = fname + "(" + ", ".join(cleanObjects(args)) + ")"
         else:
             line = VARIABLE_DECL.format(
-                inst.name.replace(".", "_"), fname + "(" + ", ".join(args) + ")"
+                inst.name.replace(".", "_"),
+                fname + "(" + ", ".join(cleanObjects(args)) + ")",
             )
         return line
 
