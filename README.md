@@ -11,8 +11,8 @@ $ rbxllc <input.ll> -o <output.lua>
 - `-v` or `--version`: Print version information
 - `-s`: generate code that is buffer-overflow strict. <sub>This will make the generated code slower, larger, and less readable but can fix programs that depend on buffer overflow behavior.</sub>
 - `-nb`: use Luau 5.4 operaters instead of the `bit32` library.
-- `-cbuf`: generated code will declare functions from the Luau `buffer` library to be resolved. <sub>Reccomended for non-luau ecosystems.</sub>
-- `-cbit`: generated code will declare functions from the Luau `bit32` library to be resolved. <sub>Reccomended for non-luau ecosystems.</sub>
+- `-cbuff`: generated code will not expose functions from the Luau `buffer`.
+- `-cbit`: generated code will not expose functions from the Luau `bit32`.
 # Installation:
 ## Requirements:
 - LLVM 14 (no higher)
