@@ -29,7 +29,7 @@ def main():
                 + VERSION
                 + " | \033[1;30mllvmlite:\033[0m "
                 + llvmlite.__version__
-                + " | \033[1;30mcopyright:\033[0m Unexex & Roblox Compilers Collection. All rights reserved."
+                + " | \033[1;30mcopyright:\033[0m AsynchronousAI. All rights reserved."
             )
             sys.exit(0)
         elif arg.startswith("-"):
